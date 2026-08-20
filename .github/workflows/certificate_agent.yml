@@ -1,0 +1,32 @@
+name: Certificate Agent
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub may delay this by a few minutes under load --
+    # that's normal and fine for this use case. On a PUBLIC repo, Actions
+    # minutes are unlimited/free, so you can safely go as frequent as
+    # every 5 minutes ('*/5 * * * *') if you want faster turnaround.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab, for testing
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run one check-and-process pass
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SUBJECT_KEYWORD: ${{ secrets.SUBJECT_KEYWORD }}
+          DESTINATION_EMAIL: ${{ secrets.DESTINATION_EMAIL }}
+        run: python run_once.py
