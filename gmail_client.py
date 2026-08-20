@@ -33,13 +33,33 @@ SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 
 
+def _normalize_charset(enc):
+    """Some mail clients label Thai text as 'windows-874', but Python's
+    codec registry only recognizes the equivalent name 'cp874' -- map the
+    common aliases here so decode_header() doesn't crash on them."""
+    if not enc:
+        return "utf-8"
+    aliases = {
+        "windows-874": "cp874",
+        "tis-620": "cp874",
+        "iso-8859-11": "cp874",
+    }
+    return aliases.get(enc.lower(), enc)
+
+
 def _decode(value):
     parts = decode_header(value)
     out = ""
     for text, enc in parts:
-        out += text.decode(enc or "utf-8") if isinstance(text, bytes) else text
+        if isinstance(text, bytes):
+            charset = _normalize_charset(enc)
+            try:
+                out += text.decode(charset)
+            except (LookupError, UnicodeDecodeError):
+                out += text.decode(charset, errors="replace")
+        else:
+            out += text
     return out
-
 
 def fetch_matching_emails(subject_keyword):
     """Returns a list of dicts: {uid, from, subject, xlsx_bytes, xlsx_name}
