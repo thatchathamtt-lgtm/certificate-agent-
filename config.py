@@ -96,6 +96,88 @@ DEFAULT_SIGNATORIES = {
 }
 
 # ---------------------------------------------------------------------------
+# Signatory library -- everyone who might sign a certificate, keyed by a
+# short lowercase id. Both the left and right slot can independently be set
+# to any of these (see run_once.py: signers are picked by matching these ids
+# as substrings of the triggering email's subject line, e.g.
+# "ขอใบ Cer | left: chayanun | right: nuch").
+#
+# NOTE: each entry's "lines" use LEFT-slot baseline y-positions by default
+# (145.276 / 133.824 / 122.202). If a person is placed in the RIGHT slot
+# instead, the baselines need the right-slot offset (roughly -8 pt higher
+# top line, see DEFAULT_SIGNATORIES above for the reference numbers) --
+# render_certificate_page() handles this shift automatically based on which
+# slot the profile is assigned to, so you only need to fill in "lines_left"
+# below and the pipeline derives the right-slot version.
+# ---------------------------------------------------------------------------
+SIGNATORY_LIBRARY = {
+    "chayanun": {
+        "display_lines": [
+            "Chayanun Suankaew",
+            "Entomologist",
+            "Pest Elimination Service Ecolab Ltd.",
+        ],
+        "signature_image": os.path.join(ASSETS_DIR, "Sig_Chayanan.png"),
+    },
+    "issariya": {
+        "display_lines": [
+            "Issariya Tanaksaranone",
+            "Pest Elimination Division",
+            "Operation Manager",
+        ],
+        "signature_image": os.path.join(ASSETS_DIR, "Sig_Issariya.png"),
+    },
+    "nuch": {
+        "display_lines": [
+            "Nuch Laokhom",
+            "Field Sales & Services Manager",
+            "Ecolab Pest Elimination Services Division",
+        ],
+        "signature_image": os.path.join(ASSETS_DIR, "Sig_Nuch.png"),
+    },
+    "yadawan": {
+        "display_lines": [
+            "Yadawan Praisri",
+            "Technical Support",
+            "Ecolab Pest Elimination Services Division",
+        ],
+        "signature_image": os.path.join(ASSETS_DIR, "Sig_Yadawan.png"),
+    },
+}
+
+# Baseline y-positions for each slot (pdf bottom-up coords). Every profile
+# in SIGNATORY_LIBRARY gets stamped into whichever slot it's assigned to
+# using these, so signatures aren't tied to a fixed person/slot pairing.
+SLOT_BASELINES = {
+    "left": {
+        "x0": LEFT_X0,
+        "box": LEFT_SIG_BOX,
+        "max_height": 36,
+        "baselines": [145.276, 133.824, 122.202],
+    },
+    "right": {
+        "x0": RIGHT_X0,
+        "box": RIGHT_SIG_BOX,
+        "max_height": 37,
+        "baselines": [137.112, 127.672, 118.063],
+    },
+}
+
+
+def build_signatory_slot(profile_id, slot):
+    """Look up a SIGNATORY_LIBRARY profile and format it for the given
+    slot ('left' or 'right'), using that slot's own baseline positions."""
+    profile = SIGNATORY_LIBRARY[profile_id]
+    slot_cfg = SLOT_BASELINES[slot]
+    sizes = [FOOTER_NAME_SIZE, FOOTER_SUB_SIZE, FOOTER_SUB_SIZE]
+    lines = list(zip(profile["display_lines"], sizes, slot_cfg["baselines"]))
+    return {
+        "lines": lines,
+        "signature_image": profile["signature_image"],
+        "max_height": slot_cfg["max_height"],
+    }
+
+# ---------------------------------------------------------------------------
 # Runtime / email settings -- overridable via environment variables so
 # nothing sensitive or deployment-specific is hardcoded in source.
 # ---------------------------------------------------------------------------
