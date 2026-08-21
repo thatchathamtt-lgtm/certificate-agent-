@@ -6,7 +6,7 @@ on:
     # that's normal and fine for this use case. On a PUBLIC repo, Actions
     # minutes are unlimited/free, so you can safely go as frequent as
     # every 5 minutes ('*/5 * * * *') if you want faster turnaround.
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab, for testing
 
 jobs:
