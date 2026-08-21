@@ -61,6 +61,7 @@ def _decode(value):
             out += text
     return out
 
+
 def fetch_matching_emails(subject_keyword):
     """Returns a list of dicts: {uid, from, subject, xlsx_bytes, xlsx_name}
     for UNSEEN emails whose subject contains subject_keyword and that have
@@ -86,16 +87,36 @@ def fetch_matching_emails(subject_keyword):
         if subject_keyword not in subject:
             continue
 
+        # --- attachment detection: check filename AND common mimetypes,
+        # and log every MIME part we saw so a mismatch is diagnosable from
+        # the Actions log instead of having to guess. ---
         xlsx_bytes, xlsx_name = None, None
+        parts_seen = []
         for part in msg.walk():
+            content_type = part.get_content_type()
             filename = part.get_filename()
-            if filename and filename.lower().endswith(".xlsx"):
-                xlsx_bytes = part.get_payload(decode=True)
-                xlsx_name = _decode(filename)
-                break
+            disposition = part.get("Content-Disposition", "")
+            parts_seen.append(
+                f"type={content_type} filename={filename!r} disposition={disposition!r}"
+            )
+
+            is_xlsx_mimetype = content_type in (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/octet-stream",  # some clients mislabel xlsx as this
+                "application/vnd.ms-excel",  # occasionally used for xlsx too
+            )
+            has_xlsx_name = bool(filename) and filename.lower().endswith(".xlsx")
+
+            if has_xlsx_name or (is_xlsx_mimetype and filename):
+                payload = part.get_payload(decode=True)
+                if payload:
+                    xlsx_bytes = payload
+                    xlsx_name = _decode(filename) if filename else "roster.xlsx"
+                    break
 
         if xlsx_bytes is None:
             log.info("Skipping email %s (subject matched but no .xlsx attachment)", subject)
+            log.info("  MIME parts found in this email: %s", " | ".join(parts_seen) or "(none)")
             continue
 
         results.append({
