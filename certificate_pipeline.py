@@ -205,6 +205,41 @@ def render_certificate_page(template_bytes, name, date_str, signatories, work_di
 # ---------------------------------------------------------------------------
 # 4. Top-level entry point
 # ---------------------------------------------------------------------------
+def parse_signatories_from_subject(subject):
+    """Look for 'left: <id>' / 'right: <id>' (case-insensitive, either side
+    optional) in the triggering email's subject line and build a
+    signatories dict from config.SIGNATORY_LIBRARY. Falls back to
+    config.DEFAULT_SIGNATORIES for any side not specified or not
+    recognized -- an automated agent should never crash a whole batch over
+    a typo'd signer name, it should just fall back safely and this gets
+    logged so it's easy to notice.
+
+    Example subject: "ขอใบ Cer | left: yadawan | right: issariya"
+    """
+    signatories = dict(config.DEFAULT_SIGNATORIES)
+    notes = []
+
+    for slot in ("left", "right"):
+        m = re.search(rf"{slot}\s*[:=]\s*([a-zA-Z]+)", subject, re.IGNORECASE)
+        if not m:
+            continue
+        profile_id = m.group(1).strip().lower()
+        if profile_id in config.SIGNATORY_LIBRARY:
+            signatories[slot] = config.build_signatory_slot(profile_id, slot)
+            notes.append(f"{slot}={profile_id}")
+        else:
+            log.warning(
+                "Subject requested unknown signer id '%s' for %s slot "
+                "(known ids: %s) -- using default instead.",
+                profile_id, slot, ", ".join(config.SIGNATORY_LIBRARY),
+            )
+            notes.append(f"{slot}=default (unknown id '{profile_id}')")
+
+    if notes:
+        log.info("Signatories for this batch: %s", ", ".join(notes))
+    return signatories
+
+
 def generate_certificates(xlsx_path, out_dir, date_str_override=None, signatories=None):
     """Builds one PDF containing one certificate page per unique roster
     name. Returns the output PDF path."""
