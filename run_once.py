@@ -14,7 +14,7 @@ import tempfile
 
 import config
 import gmail_client
-from certificate_pipeline import generate_certificates
+from certificate_pipeline import generate_certificates, parse_signatories_from_subject
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -43,7 +43,10 @@ def main():
                 with open(xlsx_path, "wb") as f:
                     f.write(item["xlsx_bytes"])
 
-                pdf_path, names, date_str, date_flag_note = generate_certificates(xlsx_path, tmp)
+                signatories = parse_signatories_from_subject(item["subject"])
+                pdf_path, names, date_str, date_flag_note = generate_certificates(
+                    xlsx_path, tmp, signatories=signatories
+                )
 
                 dest = config.DESTINATION_EMAIL or item["from"]
                 subject = f"Certificates generated - {date_str} ({len(names)} people)"
